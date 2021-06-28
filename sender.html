@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sender</title>
+    <script src="js/peerjs.min.js"></script>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+</head>
+<body>
+
+
+<h1>Name: Sender</h1>
+<h1>Peer ID: <span id="peerID"></span></h1>
+<input id="peerInput" placeholder="Reciever Peer ID" type="text">
+<button onclick="ConnectP2P()" id="connect">Connect</button>
+<h1>Connection ID: <span id="Connection"></span></h1>
+<button onclick="sendInvite()">Make a Call</button>
+
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-6">
+            <h5>Sender</h5>
+            <video muted id="rabbil"></video>
+        </div>
+        <div class="col-md-6">
+            <h5>Reciever</h5>
+            <video id="sobuj"></video>
+        </div>
+    </div>
+</div>
+
+
+<script>
+
+let ringingtone = new Audio("./sounds/ringingtone.mp3")
+
+
+
+
+
+let MySTUNServer="stun:stun.l.google.com:19302";
+let MyTurnServer="turn:numb.viagenie.ca";
+let MyTurnUserName="sadabdhrubo@gmail.com";
+let MyTurnPass="3S4pf!hg!sBaRbJ";
+
+
+
+let StunTurnConfig={
+    config:{
+        'iceServers':[
+            {urls: MySTUNServer},
+            {urls: MyTurnServer,credential:MyTurnPass, username: MyTurnUserName }
+        ]
+    }
+}
+
+// Peer ID Generate...
+let peer = new Peer(StunTurnConfig);
+
+peer.on("open",function (id) {
+    $('#peerID').html(id)
+})
+
+//Connect
+function ConnectP2P(){
+    let peerID=$('#peerInput').val();
+    let conn= peer.connect(peerID);
+    // Connection Check
+    conn.on('open',function () {
+        $('#Connection').html("YES")
+    })
+  
+}
+
+    
+     peer.on('connection',function (conn) {
+            conn.on('data',function (msg){
+                console.log('a', msg)
+                if(msg === "invitaionAccepted"){
+                    console.log("b", msg)
+                    ringingtone.pause()
+                    ringingtone.currentTime = 0
+                    GenerateCall()
+                }
+            })
+        })
+
+
+
+// Generate Call
+function GenerateCall(){
+
+    // Capture Object
+    let CaptureObj={"video":true,"audio":true};
+    navigator.mediaDevices.getUserMedia(CaptureObj)
+        .then(function (FileStream) {
+
+            // Rabbil Video
+            let RabbilVideo=document.getElementById('rabbil');
+            RabbilVideo.srcObject=FileStream;
+            RabbilVideo.play();
+
+
+            //  Send Call
+            let peerID=$('#peerInput').val();
+            let call= peer.call(peerID,FileStream);
+
+
+            // Sobuj Video
+            call.on('stream', function(remoteStream) {
+                // Rabbil Video
+                let SobujVideo=document.getElementById('sobuj');
+                SobujVideo.srcObject=remoteStream;
+                SobujVideo.play();
+            });
+
+
+
+        })
+        .catch(function (err) {
+            alert("Errr")
+        })
+
+
+
+}
+
+
+function sendInvite(){
+      let peerID =$('#peerInput').val();
+      let conn=peer.connect(peerID);
+
+      // Send
+      conn.on('open',function (){
+          ringingtone.play()
+          conn.send("senderIsCalling")
+      })
+}
+
+
+</script>
+
+
+</body>
+</html>
